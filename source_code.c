@@ -6,8 +6,7 @@
 #define MAX_ROOMS 20
 #define MAX_SLOTS 10
 #define MAX_SCHEDULE 50
-
-// ---------------- DATA STRUCTURES ----------------
+#define MAX_MATRIX 8
 
 typedef struct {
     int id;
@@ -34,23 +33,14 @@ typedef struct {
     int slotId;
 } Schedule;
 
-// ---------------- GLOBAL DATA ----------------
-
 Course courses[MAX_COURSES];
 Room rooms[MAX_ROOMS];
 TimeSlot slots[MAX_SLOTS];
-
 Schedule timetable[MAX_SCHEDULE];
 
-int courseCount = 0;
-int roomCount = 0;
-int slotCount = 0;
-int scheduledCount = 0;
-
-// ---------------- SAMPLE DATA ----------------
+int courseCount = 0, roomCount = 0, slotCount = 0, scheduledCount = 0;
 
 void loadData() {
-
     courseCount = 6;
     roomCount = 3;
     slotCount = 4;
@@ -72,98 +62,59 @@ void loadData() {
     slots[3] = (TimeSlot){4, "12:00-01:00"};
 
     scheduledCount = 0;
-
     printf("\nSample university data loaded!\n");
 }
 
-// ---------------- CLASH DETECTION ----------------
-
 int hasConflict(int courseIndex, int roomIndex, int slotIndex) {
-
     for (int i = 0; i < scheduledCount; i++) {
-
         int oldCourse = timetable[i].courseId;
-        int oldRoom = timetable[i].roomId;
-        int oldSlot = timetable[i].slotId;
-
-        // Same time slot required for comparison
-        if (oldSlot != slotIndex)
+        if (timetable[i].slotId != slotIndex)
             continue;
 
-        // Faculty clash
-        if (strcmp(courses[courseIndex].faculty,
-                   courses[oldCourse].faculty) == 0)
+        if (strcmp(courses[courseIndex].faculty, courses[oldCourse].faculty) == 0)
             return 1;
-
-        // Student group clash
-        if (strcmp(courses[courseIndex].group,
-                   courses[oldCourse].group) == 0)
+        if (strcmp(courses[courseIndex].group, courses[oldCourse].group) == 0)
             return 1;
-
-        // Room clash
-        if (roomIndex == oldRoom)
+        if (roomIndex == timetable[i].roomId)
             return 1;
     }
-
     return 0;
 }
 
-// ---------------- BACKTRACKING ----------------
-
 int backtracking(int courseIndex) {
-
     if (courseIndex == courseCount)
         return 1;
 
     for (int s = 0; s < slotCount; s++) {
-
         for (int r = 0; r < roomCount; r++) {
-
-            // Check room capacity
-            if (rooms[r].capacity <
-                courses[courseIndex].students)
+            if (rooms[r].capacity < courses[courseIndex].students)
                 continue;
 
             if (!hasConflict(courseIndex, r, s)) {
-
-                timetable[scheduledCount++] =
-                    (Schedule){courseIndex, r, s};
-
+                timetable[scheduledCount++] = (Schedule){courseIndex, r, s};
                 if (backtracking(courseIndex + 1))
                     return 1;
-
-                // Undo the decision
                 scheduledCount--;
             }
         }
     }
-
     return 0;
 }
 
-// ---------------- GREEDY ALGORITHM ----------------
-
 void greedyScheduling() {
-
     scheduledCount = 0;
+    int unscheduled = 0;
 
     for (int c = 0; c < courseCount; c++) {
-
         int assigned = 0;
 
         for (int s = 0; s < slotCount && !assigned; s++) {
-
             for (int r = 0; r < roomCount; r++) {
-
-                if (rooms[r].capacity <
-                    courses[c].students)
+                if (rooms[r].capacity < courses[c].students)
                     continue;
 
                 if (!hasConflict(c, r, s)) {
-
-                    timetable[scheduledCount++] =
-                        (Schedule){c, r, s};
-
+                    timetable[scheduledCount++] = (Schedule){c, r, s};
                     assigned = 1;
                     break;
                 }
@@ -171,179 +122,296 @@ void greedyScheduling() {
         }
 
         if (!assigned) {
-            printf("Could not schedule course: %s\n",
-                   courses[c].name);
+            printf("Unscheduled course: %s\n", courses[c].name);
+            unscheduled++;
         }
     }
+
+    printf("\nGreedy scheduling result: %d of %d courses scheduled.\n",
+           scheduledCount, courseCount);
+    if (unscheduled)
+        printf("%d course(s) could not be scheduled. Try Backtracking.\n", unscheduled);
+    else
+        printf("All courses were scheduled successfully.\n");
 }
 
-// ---------------- DISPLAY TIMETABLE ----------------
-
 void displayTimetable() {
-
     if (scheduledCount == 0) {
         printf("\nNo timetable generated yet!\n");
         return;
     }
 
     printf("\n========== UNIVERSITY TIMETABLE ==========\n");
-
-    printf("%-15s %-18s %-15s %-15s %-10s\n",
+    printf("%-15s %-18s %-15s %-15s %-15s\n",
            "Course", "Faculty", "Group", "Room", "Time");
-
-    printf("---------------------------------------------------------------------\n");
+    printf("--------------------------------------------------------------------------\n");
 
     for (int i = 0; i < scheduledCount; i++) {
-
         int c = timetable[i].courseId;
         int r = timetable[i].roomId;
         int s = timetable[i].slotId;
-
-        printf("%-15s %-18s %-15s %-15s %-10s\n",
-               courses[c].name,
-               courses[c].faculty,
-               courses[c].group,
-               rooms[r].name,
-               slots[s].time);
+        printf("%-15s %-18s %-15s %-15s %-15s\n",
+               courses[c].name, courses[c].faculty, courses[c].group,
+               rooms[r].name, slots[s].time);
     }
 }
 
-// ---------------- SORTING: MERGE SORT ----------------
-
 void merge(int arr[], int left, int mid, int right) {
-
     int temp[MAX_COURSES];
     int i = left, j = mid + 1, k = 0;
 
-    while (i <= mid && j <= right) {
-
-        if (arr[i] <= arr[j])
-            temp[k++] = arr[i++];
-        else
-            temp[k++] = arr[j++];
-    }
-
-    while (i <= mid)
-        temp[k++] = arr[i++];
-
-    while (j <= right)
-        temp[k++] = arr[j++];
+    while (i <= mid && j <= right)
+        temp[k++] = (arr[i] <= arr[j]) ? arr[i++] : arr[j++];
+    while (i <= mid) temp[k++] = arr[i++];
+    while (j <= right) temp[k++] = arr[j++];
 
     for (i = left, k = 0; i <= right; i++)
         arr[i] = temp[k++];
 }
 
 void mergeSort(int arr[], int left, int right) {
-
-    if (left >= right)
-        return;
-
+    if (left >= right) return;
     int mid = left + (right - left) / 2;
-
     mergeSort(arr, left, mid);
     mergeSort(arr, mid + 1, right);
-
     merge(arr, left, mid, right);
 }
 
-// ---------------- BINARY SEARCH ----------------
-
 int binarySearch(int arr[], int n, int key) {
-
     int low = 0, high = n - 1;
-
     while (low <= high) {
-
         int mid = low + (high - low) / 2;
-
-        if (arr[mid] == key)
-            return mid;
-
-        if (arr[mid] < key)
-            low = mid + 1;
-        else
-            high = mid - 1;
+        if (arr[mid] == key) return mid;
+        if (arr[mid] < key) low = mid + 1;
+        else high = mid - 1;
     }
-
     return -1;
 }
 
-// ---------------- ROOM UTILIZATION ----------------
-
 void roomUtilization() {
+    if (roomCount == 0) {
+        printf("\nLoad data first!\n");
+        return;
+    }
 
     printf("\n========== ROOM UTILIZATION ==========\n");
-
     for (int r = 0; r < roomCount; r++) {
-
         int used = 0;
-
-        for (int i = 0; i < scheduledCount; i++) {
-
-            if (timetable[i].roomId == r)
-                used++;
-        }
-
-        float utilization =
-            (float)used / slotCount * 100;
+        for (int i = 0; i < scheduledCount; i++)
+            if (timetable[i].roomId == r) used++;
 
         printf("%s : %d/%d slots used (%.2f%%)\n",
-               rooms[r].name,
-               used,
-               slotCount,
-               utilization);
+               rooms[r].name, used, slotCount,
+               (float)used / slotCount * 100);
     }
 }
 
-// ---------------- CSV EXPORT ----------------
-
 void exportCSV() {
-
     if (scheduledCount == 0) {
         printf("\nGenerate a timetable first!\n");
         return;
     }
 
     FILE *fp = fopen("timetable.csv", "w");
-
     if (fp == NULL) {
         printf("Unable to create CSV file!\n");
         return;
     }
 
     fprintf(fp, "Course,Faculty,Group,Room,Time\n");
-
     for (int i = 0; i < scheduledCount; i++) {
-
-        int c = timetable[i].courseId;
-        int r = timetable[i].roomId;
-        int s = timetable[i].slotId;
-
-        fprintf(fp, "%s,%s,%s,%s,%s\n",
-                courses[c].name,
-                courses[c].faculty,
-                courses[c].group,
-                rooms[r].name,
-                slots[s].time);
+        int c = timetable[i].courseId, r = timetable[i].roomId, s = timetable[i].slotId;
+        fprintf(fp, "%s,%s,%s,%s,%s\n", courses[c].name, courses[c].faculty,
+                courses[c].group, rooms[r].name, slots[s].time);
     }
-
     fclose(fp);
-
     printf("\nTimetable exported to timetable.csv\n");
 }
 
-// ---------------- MAIN MENU ----------------
+/* Divide and Conquer: Maximum Subarray */
+int maxCrossingSum(int a[], int left, int mid, int right) {
+    int sum = 0, leftSum = -2147483647, rightSum = -2147483647;
+
+    for (int i = mid; i >= left; i--) {
+        sum += a[i];
+        if (sum > leftSum) leftSum = sum;
+    }
+
+    sum = 0;
+    for (int i = mid + 1; i <= right; i++) {
+        sum += a[i];
+        if (sum > rightSum) rightSum = sum;
+    }
+    return leftSum + rightSum;
+}
+
+int maxSubarray(int a[], int left, int right) {
+    if (left == right) return a[left];
+
+    int mid = left + (right - left) / 2;
+    int x = maxSubarray(a, left, mid);
+    int y = maxSubarray(a, mid + 1, right);
+    int z = maxCrossingSum(a, left, mid, right);
+
+    int best = x > y ? x : y;
+    return best > z ? best : z;
+}
+
+void maximumSubarrayModule() {
+    int n, a[100];
+    printf("Enter number of elements (1-100): ");
+    scanf("%d", &n);
+    if (n < 1 || n > 100) {
+        printf("Invalid size!\n");
+        return;
+    }
+
+    printf("Enter array elements: ");
+    for (int i = 0; i < n; i++) scanf("%d", &a[i]);
+
+    printf("Maximum subarray sum: %d\n", maxSubarray(a, 0, n - 1));
+}
+
+/* Classical and Strassen Matrix Multiplication */
+void addMatrix(int A[MAX_MATRIX][MAX_MATRIX],
+               int B[MAX_MATRIX][MAX_MATRIX],
+               int C[MAX_MATRIX][MAX_MATRIX], int n, int sign) {
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+            C[i][j] = A[i][j] + sign * B[i][j];
+}
+
+void classicalMultiply(int A[MAX_MATRIX][MAX_MATRIX],
+                       int B[MAX_MATRIX][MAX_MATRIX],
+                       int C[MAX_MATRIX][MAX_MATRIX], int n) {
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++) {
+            C[i][j] = 0;
+            for (int k = 0; k < n; k++)
+                C[i][j] += A[i][k] * B[k][j];
+        }
+}
+
+void strassen(int A[MAX_MATRIX][MAX_MATRIX],
+              int B[MAX_MATRIX][MAX_MATRIX],
+              int C[MAX_MATRIX][MAX_MATRIX], int n) {
+    if (n == 1) {
+        C[0][0] = A[0][0] * B[0][0];
+        return;
+    }
+
+    int h = n / 2;
+    int A11[MAX_MATRIX][MAX_MATRIX] = {0}, A12[MAX_MATRIX][MAX_MATRIX] = {0};
+    int A21[MAX_MATRIX][MAX_MATRIX] = {0}, A22[MAX_MATRIX][MAX_MATRIX] = {0};
+    int B11[MAX_MATRIX][MAX_MATRIX] = {0}, B12[MAX_MATRIX][MAX_MATRIX] = {0};
+    int B21[MAX_MATRIX][MAX_MATRIX] = {0}, B22[MAX_MATRIX][MAX_MATRIX] = {0};
+    int M1[MAX_MATRIX][MAX_MATRIX] = {0}, M2[MAX_MATRIX][MAX_MATRIX] = {0};
+    int M3[MAX_MATRIX][MAX_MATRIX] = {0}, M4[MAX_MATRIX][MAX_MATRIX] = {0};
+    int M5[MAX_MATRIX][MAX_MATRIX] = {0}, M6[MAX_MATRIX][MAX_MATRIX] = {0};
+    int M7[MAX_MATRIX][MAX_MATRIX] = {0}, X[MAX_MATRIX][MAX_MATRIX] = {0};
+    int Y[MAX_MATRIX][MAX_MATRIX] = {0}, T[MAX_MATRIX][MAX_MATRIX] = {0};
+
+    for (int i = 0; i < h; i++)
+        for (int j = 0; j < h; j++) {
+            A11[i][j] = A[i][j];       A12[i][j] = A[i][j + h];
+            A21[i][j] = A[i + h][j];   A22[i][j] = A[i + h][j + h];
+            B11[i][j] = B[i][j];       B12[i][j] = B[i][j + h];
+            B21[i][j] = B[i + h][j];   B22[i][j] = B[i + h][j + h];
+        }
+
+    addMatrix(A11, A22, X, h, 1); addMatrix(B11, B22, Y, h, 1);
+    strassen(X, Y, M1, h);
+    addMatrix(A21, A22, X, h, 1); strassen(X, B11, M2, h);
+    addMatrix(B12, B22, Y, h, -1); strassen(A11, Y, M3, h);
+    addMatrix(B21, B11, Y, h, -1); strassen(A22, Y, M4, h);
+    addMatrix(A11, A12, X, h, 1); strassen(X, B22, M5, h);
+    addMatrix(A21, A11, X, h, -1); addMatrix(B11, B12, Y, h, 1);
+    strassen(X, Y, M6, h);
+    addMatrix(A12, A22, X, h, -1); addMatrix(B21, B22, Y, h, 1);
+    strassen(X, Y, M7, h);
+
+    addMatrix(M1, M4, X, h, 1); addMatrix(X, M5, Y, h, -1);
+    addMatrix(Y, M7, T, h, 1);
+    for (int i = 0; i < h; i++)
+        for (int j = 0; j < h; j++) C[i][j] = T[i][j];
+
+    addMatrix(M3, M5, T, h, 1);
+    for (int i = 0; i < h; i++)
+        for (int j = 0; j < h; j++) C[i][j + h] = T[i][j];
+
+    addMatrix(M2, M4, T, h, 1);
+    for (int i = 0; i < h; i++)
+        for (int j = 0; j < h; j++) C[i + h][j] = T[i][j];
+
+    addMatrix(M1, M2, X, h, -1); addMatrix(X, M3, Y, h, 1);
+    addMatrix(Y, M6, T, h, 1);
+    for (int i = 0; i < h; i++)
+        for (int j = 0; j < h; j++) C[i + h][j + h] = T[i][j];
+}
+
+void printMatrix(int A[MAX_MATRIX][MAX_MATRIX], int n) {
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) printf("%5d", A[i][j]);
+        printf("\n");
+    }
+}
+
+void matrixModule() {
+    int n, A[MAX_MATRIX][MAX_MATRIX] = {0};
+    int B[MAX_MATRIX][MAX_MATRIX] = {0};
+    int C[MAX_MATRIX][MAX_MATRIX] = {0};
+    int S[MAX_MATRIX][MAX_MATRIX] = {0};
+
+    printf("Enter matrix size (1, 2, 4 or 8): ");
+    scanf("%d", &n);
+    if (n != 1 && n != 2 && n != 4 && n != 8) {
+        printf("Size must be a power of 2, up to 8.\n");
+        return;
+    }
+
+    printf("Enter elements of first matrix:\n");
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++) scanf("%d", &A[i][j]);
+
+    printf("Enter elements of second matrix:\n");
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++) scanf("%d", &B[i][j]);
+
+    classicalMultiply(A, B, C, n);
+    strassen(A, B, S, n);
+
+    printf("\nClassical multiplication result:\n");
+    printMatrix(C, n);
+    printf("\nStrassen multiplication result:\n");
+    printMatrix(S, n);
+}
+
+void divideConquerMenu() {
+    int choice;
+    do {
+        printf("\n--- DIVIDE AND CONQUER MODULES ---\n");
+        printf("1. Maximum Subarray Sum\n");
+        printf("2. Classical vs Strassen Matrix Multiplication\n");
+        printf("3. Return to Main Menu\n");
+        printf("Enter choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1: maximumSubarrayModule(); break;
+            case 2: matrixModule(); break;
+            case 3: break;
+            default: printf("Invalid choice!\n");
+        }
+    } while (choice != 3);
+}
 
 int main() {
-
     int choice;
 
     do {
-
-        printf("\n\n====================================");
+        printf("\n====================================");
         printf("\n UNIVERSITY TIMETABLE SYSTEM");
         printf("\n====================================");
-
         printf("\n1. Load Sample Data");
         printf("\n2. Generate using Greedy Algorithm");
         printf("\n3. Generate using Backtracking");
@@ -352,116 +420,83 @@ int main() {
         printf("\n6. Export Timetable to CSV");
         printf("\n7. Sort Course IDs");
         printf("\n8. Search Course ID");
-        printf("\n9. Exit");
-
+        printf("\n9. Divide and Conquer Modules");
+        printf("\n10. Exit");
         printf("\nEnter your choice: ");
         scanf("%d", &choice);
 
         switch (choice) {
-
             case 1:
                 loadData();
                 break;
-
             case 2:
                 if (courseCount == 0) {
                     printf("Load data first!\n");
                     break;
                 }
-
                 greedyScheduling();
-                printf("\nGreedy scheduling completed.\n");
                 break;
-
             case 3:
                 if (courseCount == 0) {
                     printf("Load data first!\n");
                     break;
                 }
-
                 scheduledCount = 0;
-
                 if (backtracking(0))
-                    printf("\nValid timetable generated!\n");
+                    printf("\nValid timetable generated! All %d courses scheduled.\n", courseCount);
                 else {
                     printf("\nNo complete timetable found.\n");
                     scheduledCount = 0;
                 }
                 break;
-
             case 4:
                 displayTimetable();
                 break;
-
             case 5:
                 roomUtilization();
                 break;
-
             case 6:
                 exportCSV();
                 break;
-
             case 7: {
-
                 if (courseCount == 0) {
                     printf("Load data first!\n");
                     break;
                 }
-
                 int ids[MAX_COURSES];
-
-                for (int i = 0; i < courseCount; i++)
-                    ids[i] = courses[i].id;
-
+                for (int i = 0; i < courseCount; i++) ids[i] = courses[i].id;
                 mergeSort(ids, 0, courseCount - 1);
-
                 printf("\nSorted Course IDs:\n");
-
-                for (int i = 0; i < courseCount; i++)
-                    printf("%d ", ids[i]);
-
+                for (int i = 0; i < courseCount; i++) printf("%d ", ids[i]);
                 printf("\n");
                 break;
             }
-
             case 8: {
-
                 if (courseCount == 0) {
                     printf("Load data first!\n");
                     break;
                 }
-
-                int ids[MAX_COURSES];
-                int key;
-
-                for (int i = 0; i < courseCount; i++)
-                    ids[i] = courses[i].id;
-
+                int ids[MAX_COURSES], key;
+                for (int i = 0; i < courseCount; i++) ids[i] = courses[i].id;
                 mergeSort(ids, 0, courseCount - 1);
-
                 printf("Enter Course ID to search: ");
                 scanf("%d", &key);
-
-                int result =
-                    binarySearch(ids, courseCount, key);
-
-                if (result != -1)
+                if (binarySearch(ids, courseCount, key) != -1)
                     printf("Course ID %d found!\n", key);
                 else
                     printf("Course not found!\n");
-
                 break;
             }
-
             case 9:
+                divideConquerMenu();
+                break;
+            case 10:
                 printf("\nExiting University Timetable System.\n");
                 break;
-
             default:
                 printf("\nInvalid choice!\n");
         }
-
-    } while (choice != 9);
+    } while (choice != 10);
 
     return 0;
 }
