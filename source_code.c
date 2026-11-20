@@ -6,7 +6,6 @@
 #define MAX_ROOMS 20
 #define MAX_SLOTS 10
 #define MAX_SCHEDULE 50
-#define MAX_MATRIX 8
 
 typedef struct {
     int id;
@@ -272,139 +271,26 @@ void maximumSubarrayModule() {
     printf("Maximum subarray sum: %d\n", maxSubarray(a, 0, n - 1));
 }
 
-/* Classical and Strassen Matrix Multiplication */
-void addMatrix(int A[MAX_MATRIX][MAX_MATRIX],
-               int B[MAX_MATRIX][MAX_MATRIX],
-               int C[MAX_MATRIX][MAX_MATRIX], int n, int sign) {
-    for (int i = 0; i < n; i++)
-        for (int j = 0; j < n; j++)
-            C[i][j] = A[i][j] + sign * B[i][j];
-}
-
-void classicalMultiply(int A[MAX_MATRIX][MAX_MATRIX],
-                       int B[MAX_MATRIX][MAX_MATRIX],
-                       int C[MAX_MATRIX][MAX_MATRIX], int n) {
-    for (int i = 0; i < n; i++)
-        for (int j = 0; j < n; j++) {
-            C[i][j] = 0;
-            for (int k = 0; k < n; k++)
-                C[i][j] += A[i][k] * B[k][j];
-        }
-}
-
-void strassen(int A[MAX_MATRIX][MAX_MATRIX],
-              int B[MAX_MATRIX][MAX_MATRIX],
-              int C[MAX_MATRIX][MAX_MATRIX], int n) {
-    if (n == 1) {
-        C[0][0] = A[0][0] * B[0][0];
-        return;
-    }
-
-    int h = n / 2;
-    int A11[MAX_MATRIX][MAX_MATRIX] = {0}, A12[MAX_MATRIX][MAX_MATRIX] = {0};
-    int A21[MAX_MATRIX][MAX_MATRIX] = {0}, A22[MAX_MATRIX][MAX_MATRIX] = {0};
-    int B11[MAX_MATRIX][MAX_MATRIX] = {0}, B12[MAX_MATRIX][MAX_MATRIX] = {0};
-    int B21[MAX_MATRIX][MAX_MATRIX] = {0}, B22[MAX_MATRIX][MAX_MATRIX] = {0};
-    int M1[MAX_MATRIX][MAX_MATRIX] = {0}, M2[MAX_MATRIX][MAX_MATRIX] = {0};
-    int M3[MAX_MATRIX][MAX_MATRIX] = {0}, M4[MAX_MATRIX][MAX_MATRIX] = {0};
-    int M5[MAX_MATRIX][MAX_MATRIX] = {0}, M6[MAX_MATRIX][MAX_MATRIX] = {0};
-    int M7[MAX_MATRIX][MAX_MATRIX] = {0}, X[MAX_MATRIX][MAX_MATRIX] = {0};
-    int Y[MAX_MATRIX][MAX_MATRIX] = {0}, T[MAX_MATRIX][MAX_MATRIX] = {0};
-
-    for (int i = 0; i < h; i++)
-        for (int j = 0; j < h; j++) {
-            A11[i][j] = A[i][j];       A12[i][j] = A[i][j + h];
-            A21[i][j] = A[i + h][j];   A22[i][j] = A[i + h][j + h];
-            B11[i][j] = B[i][j];       B12[i][j] = B[i][j + h];
-            B21[i][j] = B[i + h][j];   B22[i][j] = B[i + h][j + h];
-        }
-
-    addMatrix(A11, A22, X, h, 1); addMatrix(B11, B22, Y, h, 1);
-    strassen(X, Y, M1, h);
-    addMatrix(A21, A22, X, h, 1); strassen(X, B11, M2, h);
-    addMatrix(B12, B22, Y, h, -1); strassen(A11, Y, M3, h);
-    addMatrix(B21, B11, Y, h, -1); strassen(A22, Y, M4, h);
-    addMatrix(A11, A12, X, h, 1); strassen(X, B22, M5, h);
-    addMatrix(A21, A11, X, h, -1); addMatrix(B11, B12, Y, h, 1);
-    strassen(X, Y, M6, h);
-    addMatrix(A12, A22, X, h, -1); addMatrix(B21, B22, Y, h, 1);
-    strassen(X, Y, M7, h);
-
-    addMatrix(M1, M4, X, h, 1); addMatrix(X, M5, Y, h, -1);
-    addMatrix(Y, M7, T, h, 1);
-    for (int i = 0; i < h; i++)
-        for (int j = 0; j < h; j++) C[i][j] = T[i][j];
-
-    addMatrix(M3, M5, T, h, 1);
-    for (int i = 0; i < h; i++)
-        for (int j = 0; j < h; j++) C[i][j + h] = T[i][j];
-
-    addMatrix(M2, M4, T, h, 1);
-    for (int i = 0; i < h; i++)
-        for (int j = 0; j < h; j++) C[i + h][j] = T[i][j];
-
-    addMatrix(M1, M2, X, h, -1); addMatrix(X, M3, Y, h, 1);
-    addMatrix(Y, M6, T, h, 1);
-    for (int i = 0; i < h; i++)
-        for (int j = 0; j < h; j++) C[i + h][j + h] = T[i][j];
-}
-
-void printMatrix(int A[MAX_MATRIX][MAX_MATRIX], int n) {
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) printf("%5d", A[i][j]);
-        printf("\n");
-    }
-}
-
-void matrixModule() {
-    int n, A[MAX_MATRIX][MAX_MATRIX] = {0};
-    int B[MAX_MATRIX][MAX_MATRIX] = {0};
-    int C[MAX_MATRIX][MAX_MATRIX] = {0};
-    int S[MAX_MATRIX][MAX_MATRIX] = {0};
-
-    printf("Enter matrix size (1, 2, 4 or 8): ");
-    scanf("%d", &n);
-    if (n != 1 && n != 2 && n != 4 && n != 8) {
-        printf("Size must be a power of 2, up to 8.\n");
-        return;
-    }
-
-    printf("Enter elements of first matrix:\n");
-    for (int i = 0; i < n; i++)
-        for (int j = 0; j < n; j++) scanf("%d", &A[i][j]);
-
-    printf("Enter elements of second matrix:\n");
-    for (int i = 0; i < n; i++)
-        for (int j = 0; j < n; j++) scanf("%d", &B[i][j]);
-
-    classicalMultiply(A, B, C, n);
-    strassen(A, B, S, n);
-
-    printf("\nClassical multiplication result:\n");
-    printMatrix(C, n);
-    printf("\nStrassen multiplication result:\n");
-    printMatrix(S, n);
-}
-
 void divideConquerMenu() {
     int choice;
     do {
         printf("\n--- DIVIDE AND CONQUER MODULES ---\n");
         printf("1. Maximum Subarray Sum\n");
-        printf("2. Classical vs Strassen Matrix Multiplication\n");
-        printf("3. Return to Main Menu\n");
+        printf("2. Return to Main Menu\n");
         printf("Enter choice: ");
         scanf("%d", &choice);
 
         switch (choice) {
-            case 1: maximumSubarrayModule(); break;
-            case 2: matrixModule(); break;
-            case 3: break;
-            default: printf("Invalid choice!\n");
+            case 1:
+                maximumSubarrayModule();
+                break;
+            case 2:
+                break;
+            default:
+                printf("Invalid choice!\n");
         }
-    } while (choice != 3);
+    } while (choice != 2);
 }
-
 int main() {
     int choice;
 
